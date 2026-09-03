@@ -55,15 +55,22 @@ export default function PredictionCard({ data }: PredictionCardProps) {
         <div className="rounded-xl border border-slate-200 p-4">
           <div className="flex items-center justify-between mb-3 gap-2">
             <p className="text-sm font-semibold text-slate-800">Mercado (The Odds API)</p>
-            <span
-              className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                market.agrees
-                  ? "bg-emerald-100 text-emerald-800"
-                  : "bg-amber-100 text-amber-800"
-              }`}
-            >
-              {market.agrees ? "Concorda com o modelo" : "Discorda do modelo"}
-            </span>
+            <div className="flex flex-wrap gap-1 justify-end">
+              {market.value && (
+                <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-violet-100 text-violet-800">
+                  Valor +{market.edge}%
+                </span>
+              )}
+              <span
+                className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                  market.agrees
+                    ? "bg-emerald-100 text-emerald-800"
+                    : "bg-amber-100 text-amber-800"
+                }`}
+              >
+                {market.agrees ? "Concorda com o modelo" : "Discorda do modelo"}
+              </span>
+            </div>
           </div>
           <div className="grid grid-cols-3 gap-2 text-center text-sm">
             <div>
@@ -91,6 +98,11 @@ export default function PredictionCard({ data }: PredictionCardProps) {
       <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-center">
         <p className="text-sm text-blue-600 mb-1">Sugestão 1X2</p>
         <p className="text-lg font-bold text-blue-900">{predictions.advice}</p>
+        {predictions.votes && (
+          <p className="text-[11px] text-blue-700 mt-2">
+            Votos: Poisson {predictions.votes.poisson} · pi-rating {predictions.votes.pi} · Bradley-Terry {predictions.votes.bradleyTerry}
+          </p>
+        )}
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
