@@ -16,14 +16,21 @@ export default async function JogoPage({ params }: PageProps) {
   let error: string | null = null;
 
   try {
-    const [matchData, predictionData] = await Promise.all([
-      getFixtureById(id),
-      getPrediction(id),
-    ]);
-    match = matchData;
-    prediction = predictionData as PredictionResult | null;
+    prediction = (await getPrediction(id)) as PredictionResult | null;
+    match = (prediction?.match as Match | undefined) || (await getFixtureById(id));
+    if (!match) {
+      error =
+        "Jogo não encontrado ou a API de dados está temporariamente indisponível.";
+    }
   } catch {
-    error = "Erro ao carregar dados do jogo.";
+    try {
+      match = await getFixtureById(id);
+    } catch {
+      match = null;
+    }
+    error = match
+      ? null
+      : "Erro ao carregar dados do jogo. A API pode ter atingido o limite de pedidos.";
   }
 
   if (error || !match) {
@@ -53,6 +60,7 @@ export default async function JogoPage({ params }: PageProps) {
   });
 
   const isFinished = match.status === "FINISHED";
+  const emblem = match.competition?.emblem;
 
   return (
     <div>
@@ -65,23 +73,23 @@ export default async function JogoPage({ params }: PageProps) {
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6">
         <div className="flex items-center justify-center gap-2 text-sm text-slate-500 mb-4">
-          {match.competition.emblem && (
+          {emblem && (
             <Image
-              src={match.competition.emblem}
-              alt={match.competition.name}
+              src={emblem}
+              alt={match.competition?.name || "Competição"}
               width={20}
               height={20}
             />
           )}
           <span>
-            {match.competition.name}
+            {match.competition?.name || "Competição"}
             {match.matchday ? ` · Jornada ${match.matchday}` : ""}
           </span>
         </div>
 
         <div className="flex items-center justify-between gap-4 max-w-2xl mx-auto">
           <div className="flex-1 flex flex-col items-center text-center">
-            {match.homeTeam.crest ? (
+            {match.homeTeam?.crest ? (
               <Image
                 src={match.homeTeam.crest}
                 alt={match.homeTeam.name}
@@ -93,7 +101,7 @@ export default async function JogoPage({ params }: PageProps) {
               <div className="w-16 h-16 rounded-full bg-slate-200 mb-2" />
             )}
             <span className="font-bold text-lg text-slate-900">
-              {match.homeTeam.name}
+              {match.homeTeam?.name}
             </span>
           </div>
 
@@ -112,7 +120,7 @@ export default async function JogoPage({ params }: PageProps) {
           </div>
 
           <div className="flex-1 flex flex-col items-center text-center">
-            {match.awayTeam.crest ? (
+            {match.awayTeam?.crest ? (
               <Image
                 src={match.awayTeam.crest}
                 alt={match.awayTeam.name}
@@ -124,7 +132,7 @@ export default async function JogoPage({ params }: PageProps) {
               <div className="w-16 h-16 rounded-full bg-slate-200 mb-2" />
             )}
             <span className="font-bold text-lg text-slate-900">
-              {match.awayTeam.name}
+              {match.awayTeam?.name}
             </span>
           </div>
         </div>
