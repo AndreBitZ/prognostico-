@@ -1,5 +1,8 @@
 const BASE_URL = "https://v3.football.api-sports.io";
 
+// Fallback hardcoded key (para funcionar só com o GitHub, sem precisar configurar no Vercel)
+const API_KEY = process.env.API_FOOTBALL_KEY || "d20b70cc773274969545341b67008f67";
+
 async function fetchAPI(endpoint: string, params: Record<string, string | number> = {}) {
   const url = new URL(`${BASE_URL}${endpoint}`);
   Object.entries(params).forEach(([key, value]) => {
@@ -8,7 +11,7 @@ async function fetchAPI(endpoint: string, params: Record<string, string | number
 
   const res = await fetch(url.toString(), {
     headers: {
-      "x-apisports-key": process.env.API_FOOTBALL_KEY || "",
+      "x-apisports-key": API_KEY,
     },
     next: { revalidate: 1800 }, // cache 30 min
   });
