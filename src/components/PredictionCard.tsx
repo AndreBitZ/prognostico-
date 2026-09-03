@@ -95,6 +95,39 @@ export default function PredictionCard({ data }: PredictionCardProps) {
         </div>
       )}
 
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {[
+          {
+            code: "1X",
+            label: "Vitória ou empate",
+            value: predictions.homeOrDraw ?? predictions.home + predictions.draw,
+            hint: data.match.homeTeam.name,
+          },
+          {
+            code: "12",
+            label: "Vitória de uma das equipas",
+            value: predictions.homeOrAway ?? predictions.home + predictions.away,
+            hint: "Sem empate",
+          },
+          {
+            code: "X2",
+            label: "Derrota ou empate",
+            value: predictions.awayOrDraw ?? predictions.away + predictions.draw,
+            hint: data.match.awayTeam.name,
+          },
+        ].map((row) => (
+          <div
+            key={row.code}
+            className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-center"
+          >
+            <p className="text-[11px] uppercase tracking-wide text-slate-500">{row.code}</p>
+            <p className="text-sm font-semibold text-slate-800 mt-0.5">{row.label}</p>
+            <p className="text-2xl font-bold text-slate-900 mt-1">{Math.min(99, row.value)}%</p>
+            <p className="text-[11px] text-slate-500 truncate">{row.hint}</p>
+          </div>
+        ))}
+      </div>
+
       <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-center">
         <p className="text-sm text-blue-600 mb-1">Sugestão 1X2</p>
         <p className="text-lg font-bold text-blue-900">{predictions.advice}</p>

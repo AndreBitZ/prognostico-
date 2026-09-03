@@ -39,6 +39,9 @@ export interface PredictionResult {
     expectedGoals: { home: number; away: number };
     over25: number;
     btts: number;
+    homeOrDraw?: number;
+    awayOrDraw?: number;
+    homeOrAway?: number;
     topScores: { score: string; percent: number }[];
     confidence: "Alta" | "Média" | "Baixa";
     value?: boolean;
