@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { getFixtures, getStandingsPack } from "@/lib/api";
+import { getFixtures, getCompetitionStandings } from "@/lib/api";
 import MatchCard from "@/components/MatchCard";
 import LeagueFilter from "@/components/LeagueFilter";
 import DateFilter from "@/components/DateFilter";
@@ -40,7 +40,7 @@ export default async function Home({ searchParams }: HomeProps) {
     );
     await Promise.all(
       codes.map(async (code) => {
-        const pack = await getStandingsPack(code);
+        const pack = await getCompetitionStandings(code);
         tables.set(code, pack.total || []);
       })
     );
