@@ -23,18 +23,57 @@ async function fetchAPI(endpoint: string, params: Record<string, string | number
   return res.json();
 }
 
+function getDateString(daysFromNow = 0): string {
+  const d = new Date();
+  d.setDate(d.getDate() + daysFromNow);
+  return d.toISOString().split("T")[0]; // YYYY-MM-DD
+}
+
 export async function getFixtures(params: {
   league?: number;
   next?: number;
   date?: string;
   status?: string;
 } = {}) {
-  return fetchAPI("/fixtures", {
-    next: params.next || 15,
-    ...(params.league && { league: params.league }),
-    ...(params.date && { date: params.date }),
-    ...(params.status && { status: params.status }),
-  });
+  // Free plan does not support "next" parameter.
+  // We fetch by date (today + next 2 days) instead.
+  if (params.league) {
+    // When a league is selected, try today first, then tomorrow
+    const dates = [getDateString(0), getDateString(1), getDateString(2)];
+    const allMatches: any[] = [];
+
+    for (const date of dates) {
+      const data = await fetchAPI("/fixtures", {
+        league: params.league,
+        date,
+      });
+      if (data?.response?.length) {
+        allMatches.push(...data.response);
+      }
+    }
+
+    return { response: allMatches, results: allMatches.length };
+  }
+
+  // No league filter → get fixtures for today + next 2 days
+  const dates = [getDateString(0), getDateString(1), getDateString(2)];
+  const allMatches: any[] = [];
+
+  for (const date of dates) {
+    const data = await fetchAPI("/fixtures", { date });
+    if (data?.response?.length) {
+      // Prefer not-started or live matches
+      const relevant = data.response.filter(
+        (m: any) => !["FT", "AET", "PEN", "CANC", "ABD", "AWD", "WO"].includes(m.fixture.status.short)
+      );
+      allMatches.push(...relevant);
+    }
+  }
+
+  // Limit to reasonable number
+  const limited = allMatches.slice(0, params.next || 30);
+
+  return { response: limited, results: limited.length };
 }
 
 export async function getPrediction(fixtureId: number) {
