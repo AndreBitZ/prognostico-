@@ -21,7 +21,7 @@ export default async function JogoPage({ params }: PageProps) {
       getPrediction(id),
     ]);
     match = matchData;
-    prediction = predictionData;
+    prediction = predictionData as PredictionResult | null;
   } catch {
     error = "Erro ao carregar dados do jogo.";
   }
