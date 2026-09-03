@@ -36,7 +36,28 @@ export interface PredictionResult {
     away: number;
     winner: "home" | "draw" | "away";
     advice: string;
+    expectedGoals: { home: number; away: number };
+    over25: number;
+    btts: number;
+    topScores: { score: string; percent: number }[];
+    confidence: "Alta" | "Média" | "Baixa";
   };
   h2h: Record<string, unknown> | null;
+  standingsContext?: {
+    home: {
+      position: number;
+      points: number;
+      gf: number;
+      ga: number;
+      played: number;
+    } | null;
+    away: {
+      position: number;
+      points: number;
+      gf: number;
+      ga: number;
+      played: number;
+    } | null;
+  };
   note: string;
 }
