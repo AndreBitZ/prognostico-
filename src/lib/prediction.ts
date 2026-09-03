@@ -189,7 +189,8 @@ export function buildPoissonPrediction(
   h2h: JsonRecord | null,
   standings: StandingsPack,
   homeForm: RecentForm,
-  awayForm: RecentForm
+  awayForm: RecentForm,
+  market?: { home: number; draw: number; away: number; homeOdd: number; drawOdd: number; awayOdd: number; books: number; source: string } | null
 ) {
   const MAX_GOALS = 6;
   const total = standings.total || [];
@@ -292,6 +293,16 @@ export function buildPoissonPrediction(
     pAway /= t2;
   }
 
+  if (market && market.home + market.draw + market.away > 0) {
+    pHome = pHome * 0.75 + market.home * 0.25;
+    pDraw = pDraw * 0.75 + market.draw * 0.25;
+    pAway = pAway * 0.75 + market.away * 0.25;
+    const tm = pHome + pDraw + pAway;
+    pHome /= tm;
+    pDraw /= tm;
+    pAway /= tm;
+  }
+
   const homePct = Math.round(pHome * 100);
   const drawPct = Math.round(pDraw * 100);
   const awayPct = Math.max(0, 100 - homePct - drawPct);
@@ -310,6 +321,14 @@ export function buildPoissonPrediction(
         ? "away"
         : "draw";
 
+  const marketWinner: "home" | "draw" | "away" | null = market
+    ? market.home >= market.draw && market.home >= market.away
+      ? "home"
+      : market.away >= market.draw && market.away >= market.home
+        ? "away"
+        : "draw"
+    : null;
+
   const advice =
     winner === "home"
       ? `Vitória ${match.homeTeam.name}`
@@ -326,8 +345,9 @@ export function buildPoissonPrediction(
   const sample = Math.min(homeTotal?.played || 0, awayTotal?.played || 0);
   const edge = Math.max(homePct, drawPct, awayPct);
   const modelsAgree = winner === piWinner;
+  const marketAgrees = !marketWinner || marketWinner === winner;
   const confidence: "Alta" | "Média" | "Baixa" =
-    modelsAgree && sample >= 8 && edge >= 52
+    modelsAgree && marketAgrees && sample >= 8 && edge >= 52
       ? "Alta"
       : modelsAgree && sample >= 4 && edge >= 42
         ? "Média"
@@ -350,6 +370,18 @@ export function buildPoissonPrediction(
       topScores,
       confidence,
     },
+    market: market
+      ? {
+          home: Math.round(market.home * 100),
+          draw: Math.round(market.draw * 100),
+          away: Math.round(market.away * 100),
+          homeOdd: market.homeOdd,
+          drawOdd: market.drawOdd,
+          awayOdd: market.awayOdd,
+          books: market.books,
+          agrees: marketAgrees,
+        }
+      : null,
     h2h: h2h ? asRecord(h2h.aggregates) : null,
     standingsContext: {
       home: homeTotal
@@ -371,6 +403,6 @@ export function buildPoissonPrediction(
           }
         : null,
     },
-    note: `Poisson + Dixon-Coles misturado com pi-rating. Forma ajustada à qualidade do adversário. Vantagem de casa da liga: ${HOME_ADVANTAGE.toFixed(2)}. H2H só no mesmo recinto. Modelos ${modelsAgree ? "concordam" : "divergem"} no 1X2. Não constitui conselho de apostas.`,
+    note: `Poisson + Dixon-Coles + pi-rating${market ? " + odds de mercado (25%)" : ""}. Forma ajustada ao adversário. Casa da liga: ${HOME_ADVANTAGE.toFixed(2)}. Modelos ${modelsAgree ? "concordam" : "divergem"}${market ? (marketAgrees ? "; mercado concorda" : "; mercado discorda") : ""}. Não constitui conselho de apostas.`,
   };
 }
