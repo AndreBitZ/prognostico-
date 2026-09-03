@@ -29,7 +29,7 @@ export default async function JogoPage({ params }: PageProps) {
     if (predictionData?.response?.[0]) {
       prediction = predictionData.response[0];
     }
-  } catch (e) {
+  } catch {
     error = "Erro ao carregar dados do jogo.";
   }
 

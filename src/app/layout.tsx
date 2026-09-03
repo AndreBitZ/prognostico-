@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -16,10 +17,10 @@ export default function RootLayout({
       <body className="min-h-screen antialiased">
         <header className="bg-slate-900 text-white shadow-lg">
           <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-            <a href="/" className="flex items-center gap-2 font-bold text-xl">
+            <Link href="/" className="flex items-center gap-2 font-bold text-xl">
               <span className="text-2xl">⚽</span>
               <span>Prognósticos Desportivos</span>
-            </a>
+            </Link>
             <nav className="text-sm text-slate-300">
               Powered by API-Football
             </nav>

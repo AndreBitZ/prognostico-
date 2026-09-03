@@ -26,7 +26,7 @@ export default async function Home({ searchParams }: HomeProps) {
     } else if (data?.errors?.length) {
       error = "Erro ao carregar jogos. Verifica a API key.";
     }
-  } catch (e) {
+  } catch {
     error = "Não foi possível conectar à API. Verifica a API_FOOTBALL_KEY.";
   }
 
