@@ -5,7 +5,7 @@ interface PredictionCardProps {
 }
 
 export default function PredictionCard({ data }: PredictionCardProps) {
-  const { predictions, note, standingsContext } = data;
+  const { predictions, note, standingsContext, market } = data;
 
   const bars = [
     { label: "Casa", value: predictions.home, color: "bg-blue-500" },
@@ -50,6 +50,43 @@ export default function PredictionCard({ data }: PredictionCardProps) {
           </div>
         ))}
       </div>
+
+      {market && (
+        <div className="rounded-xl border border-slate-200 p-4">
+          <div className="flex items-center justify-between mb-3 gap-2">
+            <p className="text-sm font-semibold text-slate-800">Mercado (The Odds API)</p>
+            <span
+              className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                market.agrees
+                  ? "bg-emerald-100 text-emerald-800"
+                  : "bg-amber-100 text-amber-800"
+              }`}
+            >
+              {market.agrees ? "Concorda com o modelo" : "Discorda do modelo"}
+            </span>
+          </div>
+          <div className="grid grid-cols-3 gap-2 text-center text-sm">
+            <div>
+              <p className="text-slate-500">Casa</p>
+              <p className="font-bold">{market.homeOdd}</p>
+              <p className="text-xs text-slate-500">{market.home}%</p>
+            </div>
+            <div>
+              <p className="text-slate-500">Empate</p>
+              <p className="font-bold">{market.drawOdd}</p>
+              <p className="text-xs text-slate-500">{market.draw}%</p>
+            </div>
+            <div>
+              <p className="text-slate-500">Fora</p>
+              <p className="font-bold">{market.awayOdd}</p>
+              <p className="text-xs text-slate-500">{market.away}%</p>
+            </div>
+          </div>
+          <p className="text-[11px] text-slate-400 mt-2">
+            Média sem margem de {market.books} casas (região EU).
+          </p>
+        </div>
+      )}
 
       <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-center">
         <p className="text-sm text-blue-600 mb-1">Sugestão 1X2</p>
