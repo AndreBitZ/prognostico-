@@ -6,6 +6,7 @@ import {
   type RecentMatch,
   type StandingRow,
 } from "./prediction";
+import { getMarketOddsForMatch } from "./odds";
 
 const FOOTBALL_DATA_BASE = "https://api.football-data.org/v4";
 const FOOTBALL_DATA_KEY =
@@ -199,7 +200,7 @@ export async function getPrediction(matchId: number | string) {
     const match = await getFixtureById(matchId);
     if (!match) return null;
 
-    const [h2h, standings, homeForm, awayForm] = await Promise.all([
+    const [h2h, standings, homeForm, awayForm, market] = await Promise.all([
       fetchFootballData(`/matches/${matchId}/head2head`, { limit: "10" }).catch(
         () => null
       ),
@@ -208,9 +209,15 @@ export async function getPrediction(matchId: number | string) {
         : Promise.resolve({ total: [], home: [], away: [] }),
       match.homeTeam.id ? getTeamRecentForm(match.homeTeam.id) : Promise.resolve(EMPTY_FORM),
       match.awayTeam.id ? getTeamRecentForm(match.awayTeam.id) : Promise.resolve(EMPTY_FORM),
+      getMarketOddsForMatch({
+        competitionCode: match.competition.code,
+        homeName: match.homeTeam.name,
+        awayName: match.awayTeam.name,
+        utcDate: match.utcDate,
+      }),
     ]);
 
-    return buildPoissonPrediction(match, h2h, standings, homeForm, awayForm);
+    return buildPoissonPrediction(match, h2h, standings, homeForm, awayForm, market);
   } catch {
     return null;
   }
