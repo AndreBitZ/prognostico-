@@ -1,12 +1,14 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Match } from "@/types/api";
+import { ConfidenceLevel, confidenceClass } from "@/lib/list-confidence";
 
 interface MatchCardProps {
   match: Match;
+  confidence?: ConfidenceLevel;
 }
 
-export default function MatchCard({ match }: MatchCardProps) {
+export default function MatchCard({ match, confidence }: MatchCardProps) {
   const date = new Date(match.utcDate);
   const formattedDate = date.toLocaleDateString("pt-PT", {
     weekday: "short",
@@ -30,8 +32,8 @@ export default function MatchCard({ match }: MatchCardProps) {
       href={`/jogo/${match.id}`}
       className="block bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-300 transition-all p-4"
     >
-      <div className="flex items-center justify-between text-xs text-slate-500 mb-3">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between text-xs text-slate-500 mb-3 gap-2">
+        <div className="flex items-center gap-2 min-w-0">
           {match.competition.emblem && (
             <Image
               src={match.competition.emblem}
@@ -41,9 +43,19 @@ export default function MatchCard({ match }: MatchCardProps) {
               className="object-contain"
             />
           )}
-          <span>{match.competition.name}</span>
+          <span className="truncate">{match.competition.name}</span>
         </div>
-        <span>{formattedDate}</span>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {confidence && (
+            <span
+              title="Estimativa da lista com base na tabela e na jornada. O card do jogo usa o modelo completo."
+              className={`text-[11px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${confidenceClass(confidence)}`}
+            >
+              {confidence}
+            </span>
+          )}
+          <span>{formattedDate}</span>
+        </div>
       </div>
 
       <div className="flex items-center justify-between gap-3">

@@ -1,9 +1,11 @@
 import { Suspense } from "react";
-import { getFixtures } from "@/lib/api";
+import { getFixtures, getStandingsPack } from "@/lib/api";
 import MatchCard from "@/components/MatchCard";
 import LeagueFilter from "@/components/LeagueFilter";
 import DateFilter from "@/components/DateFilter";
 import { Match } from "@/types/api";
+import { StandingRow } from "@/lib/prediction";
+import { listConfidence } from "@/lib/list-confidence";
 
 interface HomeProps {
   searchParams: Promise<{ league?: string; date?: string }>;
@@ -21,12 +23,27 @@ export default async function Home({ searchParams }: HomeProps) {
 
   let matches: Match[] = [];
   let error: string | null = null;
+  const tables = new Map<string, StandingRow[]>();
 
   try {
     matches = await getFixtures({ league: leagueCode });
     if (dateFilter) {
       matches = matches.filter((m) => matchDateISO(m.utcDate) === dateFilter);
     }
+
+    const codes = Array.from(
+      new Set(
+        matches
+          .map((m) => String(m.competition.code || m.competition.id || ""))
+          .filter(Boolean)
+      )
+    );
+    await Promise.all(
+      codes.map(async (code) => {
+        const pack = await getStandingsPack(code);
+        tables.set(code, pack.total || []);
+      })
+    );
   } catch {
     error = "Não foi possível carregar os jogos. Tenta novamente mais tarde.";
   }
@@ -38,7 +55,7 @@ export default async function Home({ searchParams }: HomeProps) {
           Próximos Jogos
         </h1>
         <p className="text-slate-600">
-          Filtra por competição e data. Desliza para o lado para mudar de dia.
+          Filtra por competição e data. O selo de confiança na lista usa a tabela e a jornada.
         </p>
       </div>
 
@@ -63,9 +80,16 @@ export default async function Home({ searchParams }: HomeProps) {
       )}
 
       <div className="grid gap-4">
-        {matches.map((match) => (
-          <MatchCard key={match.id} match={match} />
-        ))}
+        {matches.map((match) => {
+          const code = String(match.competition.code || match.competition.id || "");
+          return (
+            <MatchCard
+              key={match.id}
+              match={match}
+              confidence={listConfidence(match, tables.get(code) || [])}
+            />
+          );
+        })}
       </div>
     </div>
   );
