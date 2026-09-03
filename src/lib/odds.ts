@@ -1,4 +1,5 @@
-const ODDS_API_KEY = process.env.ODDS_API_KEY || "";
+const ODDS_API_KEY =
+  process.env.ODDS_API_KEY || "f3308789dff38e8bfffd6339acd94122";
 const ODDS_BASE = "https://api.the-odds-api.com/v4";
 
 export const ODDS_LEAGUES: Record<string, string> = {
