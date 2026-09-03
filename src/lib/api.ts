@@ -145,7 +145,7 @@ function normalizeMatches(matches: JsonRecord[]) {
       )
     )
     .map(normalizeMatch)
-    .filter(Boolean);
+    .filter((m): m is NonNullable<typeof m> => m !== null);
 }
 
 function asRecord(value: unknown): JsonRecord {
@@ -369,10 +369,10 @@ function buildPoissonPrediction(
 
   const confidence =
     Math.max(homePct, drawPct, awayPct) >= 55
-      ? "Alta"
+      ? ("Alta" as const)
       : Math.max(homePct, drawPct, awayPct) >= 42
-        ? "Média"
-        : "Baixa";
+        ? ("Média" as const)
+        : ("Baixa" as const);
 
   return {
     match,
