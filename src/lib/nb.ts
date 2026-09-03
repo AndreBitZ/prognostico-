@@ -65,3 +65,34 @@ export function estimateNbSizes(
     away: sizeFromSamples(awayGoals, Math.max(0.7, leagueAvgAway), 1.12),
   };
 }
+
+export function venueNbMarkets(
+  lambdaHome: number,
+  lambdaAway: number,
+  homeForm: FormSample,
+  awayForm: FormSample,
+  leagueAvgHome: number,
+  leagueAvgAway: number,
+  maxGoals = 6
+) {
+  const size = estimateNbSizes(homeForm, awayForm, leagueAvgHome, leagueAvgAway);
+  let over = 0;
+  let btts = 0;
+  let mass = 0;
+  for (let i = 0; i <= maxGoals; i++) {
+    for (let j = 0; j <= maxGoals; j++) {
+      const p =
+        negativeBinomialPmf(i, lambdaHome, size.home) *
+        negativeBinomialPmf(j, lambdaAway, size.away);
+      mass += p;
+      if (i + j >= 3) over += p;
+      if (i > 0 && j > 0) btts += p;
+    }
+  }
+  return {
+    home: size.home,
+    away: size.away,
+    over: mass > 0 ? over / mass : 0.5,
+    btts: mass > 0 ? btts / mass : 0.5,
+  };
+}
