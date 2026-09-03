@@ -42,6 +42,16 @@ export interface PredictionResult {
     topScores: { score: string; percent: number }[];
     confidence: "Alta" | "Média" | "Baixa";
   };
+  market?: {
+    home: number;
+    draw: number;
+    away: number;
+    homeOdd: number;
+    drawOdd: number;
+    awayOdd: number;
+    books: number;
+    agrees: boolean;
+  } | null;
   h2h: Record<string, unknown> | null;
   standingsContext?: {
     home: {
