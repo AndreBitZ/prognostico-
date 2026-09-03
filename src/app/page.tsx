@@ -1,11 +1,12 @@
 import { Suspense } from "react";
-import { getFixtures, getCompetitionStandings } from "@/lib/api";
+import { getFixtures } from "@/lib/api";
 import MatchCard from "@/components/MatchCard";
 import LeagueFilter from "@/components/LeagueFilter";
 import DateFilter from "@/components/DateFilter";
 import { Match } from "@/types/api";
 import { StandingRow } from "@/lib/prediction";
 import { listConfidence } from "@/lib/list-confidence";
+import { fetchListStandings } from "@/lib/list-standings";
 
 interface HomeProps {
   searchParams: Promise<{ league?: string; date?: string }>;
@@ -40,8 +41,7 @@ export default async function Home({ searchParams }: HomeProps) {
     );
     await Promise.all(
       codes.map(async (code) => {
-        const pack = await getCompetitionStandings(code);
-        tables.set(code, pack.total || []);
+        tables.set(code, await fetchListStandings(code));
       })
     );
   } catch {
