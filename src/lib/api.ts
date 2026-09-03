@@ -96,3 +96,179 @@ export async function getFixtureById(id: number | string) {
 
   return match;
 }
+
+async function getCompetitionStandings(competitionCodeOrId: string | number) {
+  try {
+    const data = await fetchFootballData(
+      `/competitions/${competitionCodeOrId}/standings`
+    );
+    const tables = (data.standings || []) as JsonRecord[];
+
+    const parseTable = (type: string): StandingRow[] => {
+      const table = tables.find((t) => t.type === type);
+      return ((table?.table as JsonRecord[]) || []).map((row) => {
+        const team = asRecord(row.team);
+        return {
+          teamId: Number(team.id || 0),
+          teamName: String(team.name || ""),
+          played: Number(row.playedGames || 0),
+          won: Number(row.won || 0),
+          draw: Number(row.draw || 0),
+          lost: Number(row.lost || 0),
+          goalsFor: Number(row.goalsFor || 0),
+          goalsAgainst: Number(row.goalsAgainst || 0),
+          points: Number(row.points || 0),
+          position: Number(row.position || 0),
+        };
+      });
+    };
+
+    return {
+      total: parseTable("TOTAL"),
+      home: parseTable("HOME"),
+      away: parseTable("AWAY"),
+    };
+  } catch {
+    return { total: [], home: [], away: [] };
+  }
+}
+
+async function getTeamRecentForm(teamId: number): Promise<RecentForm> {
+  try {
+    const data = await fetchFootballData(`/teams/${teamId}/matches`, {
+      status: "FINISHED",
+      limit: "10",
+    });
+    const matches = (data.matches || []) as JsonRecord[];
+    const finished = matches
+      .filter((m) => String(m.status || "") === "FINISHED")
+      .sort((a, b) => String(b.utcDate || "").localeCompare(String(a.utcDate || "")))
+      .slice(0, 8);
+
+    const parsed: RecentMatch[] = finished.map((m) => {
+      const home = asRecord(m.homeTeam);
+      const away = asRecord(m.awayTeam);
+      const score = asRecord(asRecord(m.score).fullTime);
+      const homeGoals = Number(score.home ?? 0);
+      const awayGoals = Number(score.away ?? 0);
+      const isHome = Number(home.id || 0) === teamId;
+      return {
+        opponentId: isHome ? Number(away.id || 0) : Number(home.id || 0),
+        isHome,
+        scored: isHome ? homeGoals : awayGoals,
+        conceded: isHome ? awayGoals : homeGoals,
+        utcDate: String(m.utcDate || ""),
+      };
+    });
+
+    let gf = 0;
+    let ga = 0;
+    let points = 0;
+    let weightSum = 0;
+    parsed.forEach((m, idx) => {
+      const w = Math.pow(0.85, idx);
+      gf += m.scored * w;
+      ga += m.conceded * w;
+      weightSum += w;
+      if (m.scored > m.conceded) points += 3 * w;
+      else if (m.scored === m.conceded) points += 1 * w;
+    });
+    const games = weightSum || parsed.length;
+    return {
+      games,
+      gf: games > 0 ? gf / games : 0,
+      ga: games > 0 ? ga / games : 0,
+      points: games > 0 ? points / games : 0,
+      matches: parsed,
+    };
+  } catch {
+    return { games: 0, gf: 0, ga: 0, points: 0, matches: [] };
+  }
+}
+
+const EMPTY_FORM: RecentForm = {
+  games: 0,
+  gf: 0,
+  ga: 0,
+  points: 0,
+  matches: [],
+};
+
+export async function getPrediction(matchId: number | string) {
+  try {
+    const match = await getFixtureById(matchId);
+    if (!match) return null;
+
+    const [h2h, standings, homeForm, awayForm] = await Promise.all([
+      fetchFootballData(`/matches/${matchId}/head2head`, { limit: "10" }).catch(
+        () => null
+      ),
+      match.competition.code
+        ? getCompetitionStandings(match.competition.code)
+        : Promise.resolve({ total: [], home: [], away: [] }),
+      match.homeTeam.id ? getTeamRecentForm(match.homeTeam.id) : Promise.resolve(EMPTY_FORM),
+      match.awayTeam.id ? getTeamRecentForm(match.awayTeam.id) : Promise.resolve(EMPTY_FORM),
+    ]);
+
+    return buildPoissonPrediction(match, h2h, standings, homeForm, awayForm);
+  } catch {
+    return null;
+  }
+}
+
+function normalizeMatches(matches: JsonRecord[]) {
+  return matches
+    .filter((m) =>
+      ["SCHEDULED", "TIMED", "IN_PLAY", "PAUSED", "LIVE"].includes(
+        String(m.status || "")
+      )
+    )
+    .map(normalizeMatch)
+    .filter((m): m is NonNullable<typeof m> => m !== null);
+}
+
+function normalizeMatch(m: JsonRecord | null) {
+  if (!m) return null;
+  const competition = asRecord(m.competition);
+  const homeTeam = asRecord(m.homeTeam);
+  const awayTeam = asRecord(m.awayTeam);
+  const score = asRecord(m.score);
+
+  return {
+    id: Number(m.id),
+    utcDate: String(m.utcDate || ""),
+    status: String(m.status || ""),
+    matchday: typeof m.matchday === "number" ? m.matchday : undefined,
+    stage: m.stage ? String(m.stage) : undefined,
+    competition: {
+      id: (competition.id as number | string) || (competition.code as string),
+      name: String(competition.name || "Competição"),
+      code: competition.code ? String(competition.code) : undefined,
+      emblem: (competition.emblem as string | null) || null,
+    },
+    homeTeam: {
+      id: Number(homeTeam.id || 0),
+      name: String(homeTeam.name || homeTeam.shortName || "Casa"),
+      shortName: homeTeam.shortName ? String(homeTeam.shortName) : undefined,
+      tla: homeTeam.tla ? String(homeTeam.tla) : undefined,
+      crest: (homeTeam.crest as string | null) || null,
+    },
+    awayTeam: {
+      id: Number(awayTeam.id || 0),
+      name: String(awayTeam.name || awayTeam.shortName || "Fora"),
+      shortName: awayTeam.shortName ? String(awayTeam.shortName) : undefined,
+      tla: awayTeam.tla ? String(awayTeam.tla) : undefined,
+      crest: (awayTeam.crest as string | null) || null,
+    },
+    score: {
+      fullTime: asRecord(score.fullTime) as {
+        home: number | null;
+        away: number | null;
+      },
+      halfTime: asRecord(score.halfTime) as {
+        home: number | null;
+        away: number | null;
+      },
+    },
+  };
+}
