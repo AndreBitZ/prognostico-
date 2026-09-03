@@ -41,6 +41,12 @@ export interface PredictionResult {
     btts: number;
     topScores: { score: string; percent: number }[];
     confidence: "Alta" | "Média" | "Baixa";
+    value?: boolean;
+    votes?: {
+      poisson: "home" | "draw" | "away";
+      pi: "home" | "draw" | "away";
+      bradleyTerry: "home" | "draw" | "away";
+    };
   };
   market?: {
     home: number;
@@ -51,6 +57,8 @@ export interface PredictionResult {
     awayOdd: number;
     books: number;
     agrees: boolean;
+    value?: boolean;
+    edge?: number;
   } | null;
   h2h: Record<string, unknown> | null;
   standingsContext?: {
