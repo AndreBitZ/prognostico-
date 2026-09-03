@@ -1,17 +1,17 @@
 "use client";
 
-import { MAIN_LEAGUES } from "@/lib/api-football";
 import { useRouter, useSearchParams } from "next/navigation";
+import { MAIN_LEAGUES } from "@/lib/api";
 
 export default function LeagueFilter() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const currentLeague = searchParams.get("league");
+  const current = searchParams.get("league") || "";
 
-  function handleChange(leagueId: string) {
+  function selectLeague(id: string) {
     const params = new URLSearchParams(searchParams.toString());
-    if (leagueId) {
-      params.set("league", leagueId);
+    if (id) {
+      params.set("league", id);
     } else {
       params.delete("league");
     }
@@ -21,21 +21,21 @@ export default function LeagueFilter() {
   return (
     <div className="flex flex-wrap gap-2 mb-6">
       <button
-        onClick={() => handleChange("")}
+        onClick={() => selectLeague("")}
         className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-          !currentLeague
+          !current
             ? "bg-blue-600 text-white"
             : "bg-slate-100 text-slate-700 hover:bg-slate-200"
         }`}
       >
-        Todos
+        Todas
       </button>
       {MAIN_LEAGUES.map((league) => (
         <button
           key={league.id}
-          onClick={() => handleChange(String(league.id))}
+          onClick={() => selectLeague(league.id)}
           className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-            currentLeague === String(league.id)
+            current === league.id
               ? "bg-blue-600 text-white"
               : "bg-slate-100 text-slate-700 hover:bg-slate-200"
           }`}

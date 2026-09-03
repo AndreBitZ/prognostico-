@@ -22,14 +22,14 @@ export default function RootLayout({
               <span>Prognósticos Desportivos</span>
             </Link>
             <nav className="text-sm text-slate-300">
-              Powered by API-Football
+              Football-Data.org + TheSportsDB
             </nav>
           </div>
         </header>
         <main className="max-w-6xl mx-auto px-4 py-8">{children}</main>
         <footer className="border-t mt-12 py-6 text-center text-sm text-slate-500">
           <p>
-            Dados fornecidos por API-Football. Apenas para fins informativos.
+            Dados: Football-Data.org · Logos: TheSportsDB. Apenas para fins informativos.
             Jogue com responsabilidade.
           </p>
         </footer>

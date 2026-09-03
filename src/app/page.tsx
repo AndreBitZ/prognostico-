@@ -1,8 +1,8 @@
 import { Suspense } from "react";
-import { getFixtures } from "@/lib/api-football";
+import { getFixtures } from "@/lib/api";
 import MatchCard from "@/components/MatchCard";
 import LeagueFilter from "@/components/LeagueFilter";
-import { FixtureItem } from "@/types/api";
+import { Match } from "@/types/api";
 
 interface HomeProps {
   searchParams: Promise<{ league?: string }>;
@@ -10,24 +10,15 @@ interface HomeProps {
 
 export default async function Home({ searchParams }: HomeProps) {
   const params = await searchParams;
-  const leagueId = params.league ? parseInt(params.league) : undefined;
+  const leagueCode = params.league || undefined;
 
-  let matches: FixtureItem[] = [];
+  let matches: Match[] = [];
   let error: string | null = null;
 
   try {
-    const data = await getFixtures({
-      league: leagueId,
-      next: 20,
-    });
-
-    if (data?.response) {
-      matches = data.response;
-    } else if (data?.errors?.length) {
-      error = "Erro ao carregar jogos. Verifica a API key.";
-    }
+    matches = await getFixtures({ league: leagueCode });
   } catch {
-    error = "Não foi possível conectar à API. Verifica a API_FOOTBALL_KEY.";
+    error = "Não foi possível carregar os jogos. Tenta novamente mais tarde.";
   }
 
   return (
@@ -37,7 +28,7 @@ export default async function Home({ searchParams }: HomeProps) {
           Próximos Jogos
         </h1>
         <p className="text-slate-600">
-          Seleciona um jogo para ver o prognóstico detalhado e estatísticas.
+          Seleciona um jogo para ver o prognóstico detalhado.
         </p>
       </div>
 
@@ -48,24 +39,19 @@ export default async function Home({ searchParams }: HomeProps) {
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-4 mb-6">
           <p className="font-medium">⚠️ {error}</p>
-          <p className="text-sm mt-1">
-            Cria um ficheiro <code className="bg-red-100 px-1 rounded">.env.local</code> com:
-            <br />
-            <code className="bg-red-100 px-1 rounded">API_FOOTBALL_KEY=a_tua_chave</code>
-          </p>
         </div>
       )}
 
       {!error && matches.length === 0 && (
         <div className="text-center py-16 text-slate-500">
-          <p className="text-lg">Nenhum jogo encontrado.</p>
-          <p className="text-sm mt-2">Tenta outra liga ou verifica a API key.</p>
+          <p className="text-lg">Nenhum jogo encontrado neste período.</p>
+          <p className="text-sm mt-2">Tenta outra liga ou volta mais tarde.</p>
         </div>
       )}
 
       <div className="grid gap-4">
         {matches.map((match) => (
-          <MatchCard key={match.fixture.id} match={match} />
+          <MatchCard key={match.id} match={match} />
         ))}
       </div>
     </div>

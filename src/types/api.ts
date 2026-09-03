@@ -1,115 +1,42 @@
 export interface Team {
   id: number;
   name: string;
-  logo: string;
+  shortName?: string;
+  tla?: string;
+  crest?: string | null;
 }
 
-export interface League {
-  id: number;
+export interface Competition {
+  id: number | string;
   name: string;
-  country: string;
-  logo: string;
-  flag?: string;
-  season: number;
-  round?: string;
+  code?: string;
+  emblem?: string | null;
 }
 
-export interface Fixture {
+export interface Match {
   id: number;
-  referee: string | null;
-  timezone: string;
-  date: string;
-  timestamp: number;
-  status: {
-    long: string;
-    short: string;
-    elapsed: number | null;
-  };
-  venue: {
-    id: number | null;
-    name: string | null;
-    city: string | null;
+  utcDate: string;
+  status: string;
+  matchday?: number;
+  stage?: string;
+  competition: Competition;
+  homeTeam: Team;
+  awayTeam: Team;
+  score?: {
+    fullTime?: { home: number | null; away: number | null };
+    halfTime?: { home: number | null; away: number | null };
   };
 }
 
-export interface Goals {
-  home: number | null;
-  away: number | null;
-}
-
-export interface Score {
-  halftime: Goals;
-  fulltime: Goals;
-  extratime: Goals | null;
-  penalty: Goals | null;
-}
-
-export interface FixtureItem {
-  fixture: Fixture;
-  league: League;
-  teams: {
-    home: Team & { winner: boolean | null };
-    away: Team & { winner: boolean | null };
+export interface PredictionResult {
+  match: Match;
+  predictions: {
+    home: number;
+    draw: number;
+    away: number;
+    winner: "home" | "draw" | "away";
+    advice: string;
   };
-  goals: Goals;
-  score: Score;
-}
-
-export interface PredictionPercent {
-  home: string;
-  draw: string;
-  away: string;
-}
-
-export interface PredictionWinner {
-  id: number | null;
-  name: string | null;
-  comment: string | null;
-}
-
-export interface Prediction {
-  winner: PredictionWinner;
-  win_or_draw: boolean;
-  under_over: string | null;
-  goals: {
-    home: string | null;
-    away: string | null;
-  };
-  advice: string;
-  percent: PredictionPercent;
-}
-
-export interface PredictionComparison {
-  form: { home: string; away: string };
-  att: { home: string; away: string };
-  def: { home: string; away: string };
-  poisson_distribution: { home: string; away: string };
-  h2h: { home: string; away: string };
-  goals: { home: string; away: string };
-  total: { home: string; away: string };
-}
-
-export interface PredictionResponse {
-  predictions: Prediction;
-  league: League;
-  teams: {
-    home: Team & {
-      last_5?: {
-        form: string;
-        att: string;
-        def: string;
-        goals: { for: { total: number; average: number }; against: { total: number; average: number } };
-      };
-    };
-    away: Team & {
-      last_5?: {
-        form: string;
-        att: string;
-        def: string;
-        goals: { for: { total: number; average: number }; against: { total: number; average: number } };
-      };
-    };
-  };
-  comparison: PredictionComparison;
-  h2h: FixtureItem[];
+  h2h: Record<string, unknown> | null;
+  note: string;
 }
