@@ -1,28 +1,33 @@
 import type { Match } from "@/types/api";
-import type { StandingRow } from "@/lib/prediction";
 import {
-  scoreConfidence,
-  confidenceClass,
-  type ConfidenceLevel,
-} from "@/lib/confidence";
+  buildPoissonPrediction,
+  type RecentForm,
+  type StandingRow,
+} from "@/lib/prediction";
+import { confidenceClass, type ConfidenceLevel } from "@/lib/confidence";
 
 export type { ConfidenceLevel };
-export { confidenceClass, scoreConfidence };
+export { confidenceClass };
+
+const EMPTY_FORM: RecentForm = {
+  games: 0,
+  gf: 0,
+  ga: 0,
+  points: 0,
+  matches: [],
+};
 
 export function listConfidence(
   match: Match,
   table: StandingRow[] = []
 ): ConfidenceLevel {
-  const home = table.find((r) => r.teamId === match.homeTeam.id);
-  const away = table.find((r) => r.teamId === match.awayTeam.id);
-  const sample = Math.min(home?.played || 0, away?.played || 0);
-  const homePpg = home && home.played > 0 ? home.points / home.played : 0;
-  const awayPpg = away && away.played > 0 ? away.points / away.played : 0;
-  const ppgGap = home && away ? Math.abs(homePpg - awayPpg) : 0;
-
-  return scoreConfidence({
-    sample,
-    matchday: match.matchday,
-    ppgGap,
-  });
+  const prediction = buildPoissonPrediction(
+    match,
+    null,
+    { total: table, home: [], away: [] },
+    EMPTY_FORM,
+    EMPTY_FORM,
+    null
+  );
+  return prediction.predictions.confidence;
 }
