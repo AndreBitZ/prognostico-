@@ -38,10 +38,17 @@ async function fetchFootballData(
   const url = new URL(`${FOOTBALL_DATA_BASE}${endpoint}`);
   Object.entries(params).forEach(([k, v]) => url.searchParams.append(k, v));
 
-  const res = await fetch(url.toString(), {
-    headers: { "X-Auth-Token": FOOTBALL_DATA_KEY },
-    next: { revalidate: 1800 },
-  });
+  const doFetch = () =>
+    fetch(url.toString(), {
+      headers: { "X-Auth-Token": FOOTBALL_DATA_KEY },
+      next: { revalidate: 1800 },
+    });
+
+  let res = await doFetch();
+  if (res.status === 429) {
+    await new Promise((r) => setTimeout(r, 1200));
+    res = await doFetch();
+  }
 
   if (!res.ok) {
     const text = await res.text();
@@ -84,21 +91,43 @@ export async function getFixtures(options: { league?: string } = {}) {
 }
 
 export async function getFixtureById(id: number | string) {
-  const data = await fetchFootballData(`/matches/${id}`);
-  const match = normalizeMatch(data);
-  if (!match) return null;
+  const numericId = Number(id);
 
-  if (!match.homeTeam.crest) {
-    match.homeTeam.crest = await getTeamLogo(match.homeTeam.name);
-  }
-  if (!match.awayTeam.crest) {
-    match.awayTeam.crest = await getTeamLogo(match.awayTeam.name);
+  try {
+    const listed = await getFixtures();
+    const cached = listed.find((m) => m.id === numericId);
+    if (cached) return cached;
+  } catch {
+    // usa o endpoint individual se a lista falhar
   }
 
-  return match;
+  try {
+    const data = await fetchFootballData(`/matches/${id}`);
+    const raw =
+      data && typeof data === "object" && (data as { match?: unknown }).match
+        ? (data as { match: unknown }).match
+        : data;
+    const match = normalizeMatch(raw as JsonRecord);
+    if (!match) return null;
+
+    if (!match.homeTeam.crest) {
+      match.homeTeam.crest = await getTeamLogo(match.homeTeam.name);
+    }
+    if (!match.awayTeam.crest) {
+      match.awayTeam.crest = await getTeamLogo(match.awayTeam.name);
+    }
+
+    return match;
+  } catch {
+    return null;
+  }
 }
 
-async function getCompetitionStandings(competitionCodeOrId: string | number) {
+export async function getStandingsPack(competitionCodeOrId: string | number) {
+  return getCompetitionStandings(competitionCodeOrId);
+}
+
+export async function getCompetitionStandings(competitionCodeOrId: string | number) {
   try {
     const data = await fetchFootballData(
       `/competitions/${competitionCodeOrId}/standings`
