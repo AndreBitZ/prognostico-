@@ -8,6 +8,11 @@ import {
 } from "./prediction";
 import { getMarketOddsForMatch } from "./odds";
 import { getLeagueXG, matchTeamXG } from "./xg";
+import {
+  formFromOpenFootball,
+  getOpenFootballMatches,
+  preferForm,
+} from "./football-json";
 
 const FOOTBALL_DATA_BASE = "https://api.football-data.org/v4";
 const FOOTBALL_DATA_KEY =
@@ -231,30 +236,45 @@ export async function getPrediction(matchId: number | string) {
     const match = await getFixtureById(matchId);
     if (!match) return null;
 
-    const [h2h, standings, homeForm, awayForm, market, xgTeams] = await Promise.all([
-      fetchFootballData(`/matches/${matchId}/head2head`, { limit: "10" }).catch(
-        () => null
-      ),
-      match.competition.code
-        ? getCompetitionStandings(match.competition.code)
-        : Promise.resolve({ total: [], home: [], away: [] }),
-      match.homeTeam.id ? getTeamRecentForm(match.homeTeam.id) : Promise.resolve(EMPTY_FORM),
-      match.awayTeam.id ? getTeamRecentForm(match.awayTeam.id) : Promise.resolve(EMPTY_FORM),
-      getMarketOddsForMatch({
-        competitionCode: match.competition.code,
-        homeName: match.homeTeam.name,
-        awayName: match.awayTeam.name,
-        utcDate: match.utcDate,
-      }),
-      getLeagueXG(match.competition.code),
-    ]);
+    const [h2h, standings, homeForm, awayForm, market, xgTeams, ofMatches] =
+      await Promise.all([
+        fetchFootballData(`/matches/${matchId}/head2head`, { limit: "10" }).catch(
+          () => null
+        ),
+        match.competition.code
+          ? getCompetitionStandings(match.competition.code)
+          : Promise.resolve({ total: [], home: [], away: [] }),
+        match.homeTeam.id
+          ? getTeamRecentForm(match.homeTeam.id)
+          : Promise.resolve(EMPTY_FORM),
+        match.awayTeam.id
+          ? getTeamRecentForm(match.awayTeam.id)
+          : Promise.resolve(EMPTY_FORM),
+        getMarketOddsForMatch({
+          competitionCode: match.competition.code,
+          homeName: match.homeTeam.name,
+          awayName: match.awayTeam.name,
+          utcDate: match.utcDate,
+        }),
+        getLeagueXG(match.competition.code),
+        getOpenFootballMatches(match.competition.code),
+      ]);
+
+    const home = preferForm(
+      homeForm,
+      formFromOpenFootball(ofMatches, match.homeTeam.name)
+    );
+    const away = preferForm(
+      awayForm,
+      formFromOpenFootball(ofMatches, match.awayTeam.name)
+    );
 
     return buildPoissonPrediction(
       match,
       h2h,
       standings,
-      homeForm,
-      awayForm,
+      home,
+      away,
       market,
       matchTeamXG(xgTeams, match.homeTeam.name),
       matchTeamXG(xgTeams, match.awayTeam.name)
