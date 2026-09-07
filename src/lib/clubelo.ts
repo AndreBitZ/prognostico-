@@ -1,3 +1,5 @@
+import { unstable_cache } from "next/cache";
+
 const BASE = "https://api.clubelo.com";
 
 export type ClubEloRow = {
@@ -7,6 +9,20 @@ export type ClubEloRow = {
   level: string;
   elo: number;
 };
+
+const KEEP_COUNTRY = new Set([
+  "ENG",
+  "ESP",
+  "ITA",
+  "GER",
+  "FRA",
+  "POR",
+  "NED",
+  "BEL",
+  "BRA",
+  "SCO",
+  "TUR",
+]);
 
 const ALIAS: Record<string, string> = {
   "manchester city": "Man City",
@@ -78,13 +94,15 @@ function parseCsv(text: string): ClubEloRow[] {
   for (let i = 1; i < lines.length; i++) {
     const cols = lines[i].split(",");
     if (cols.length < 5) continue;
+    const country = (cols[2] || "").trim().toUpperCase();
+    if (KEEP_COUNTRY.size && country && !KEEP_COUNTRY.has(country)) continue;
     const elo = Number(cols[4]);
     if (!Number.isFinite(elo)) continue;
     const rank = Number(cols[0]);
     rows.push({
       rank: Number.isFinite(rank) ? rank : null,
       club: cols[1].trim(),
-      country: cols[2].trim(),
+      country,
       level: cols[3].trim(),
       elo,
     });
@@ -92,11 +110,11 @@ function parseCsv(text: string): ClubEloRow[] {
   return rows;
 }
 
-export async function getClubEloTable(): Promise<ClubEloRow[]> {
+async function downloadTable(): Promise<ClubEloRow[]> {
   const dates = [todayUtc()];
-  const d = new Date();
-  d.setUTCDate(d.getUTCDate() - 1);
-  dates.push(d.toISOString().slice(0, 10));
+  const y = new Date();
+  y.setUTCDate(y.getUTCDate() - 1);
+  dates.push(y.toISOString().slice(0, 10));
 
   for (const date of dates) {
     try {
@@ -108,20 +126,15 @@ export async function getClubEloTable(): Promise<ClubEloRow[]> {
       const rows = parseCsv(await res.text());
       if (rows.length) return rows;
     } catch {
-      /* tenta http se https falhar no host */
+      /* tenta o dia seguinte */
     }
-  }
-
-  try {
-    const res = await fetch(`http://api.clubelo.com/${todayUtc()}`, {
-      next: { revalidate: 86400 },
-    });
-    if (res.ok) return parseCsv(await res.text());
-  } catch {
-    return [];
   }
   return [];
 }
+
+export const getClubEloTable = unstable_cache(downloadTable, ["clubelo-table-v1"], {
+  revalidate: 86400,
+});
 
 export function matchClubElo(table: ClubEloRow[], teamName: string): ClubEloRow | null {
   if (!table.length || !teamName) return null;
