@@ -13,6 +13,7 @@ import {
   getOpenFootballMatches,
   preferForm,
 } from "./football-json";
+import { getClubEloTable, matchClubElo } from "./clubelo";
 
 const FOOTBALL_DATA_BASE = "https://api.football-data.org/v4";
 const FOOTBALL_DATA_KEY =
@@ -236,7 +237,7 @@ export async function getPrediction(matchId: number | string) {
     const match = await getFixtureById(matchId);
     if (!match) return null;
 
-    const [h2h, standings, homeForm, awayForm, market, xgTeams, ofMatches] =
+    const [h2h, standings, homeForm, awayForm, market, xgTeams, ofMatches, eloTable] =
       await Promise.all([
         fetchFootballData(`/matches/${matchId}/head2head`, { limit: "10" }).catch(
           () => null
@@ -258,6 +259,7 @@ export async function getPrediction(matchId: number | string) {
         }),
         getLeagueXG(match.competition.code),
         getOpenFootballMatches(match.competition.code),
+        getClubEloTable(),
       ]);
 
     const home = preferForm(
@@ -269,6 +271,9 @@ export async function getPrediction(matchId: number | string) {
       formFromOpenFootball(ofMatches, match.awayTeam.name)
     );
 
+    const homeElo = matchClubElo(eloTable, match.homeTeam.name);
+    const awayElo = matchClubElo(eloTable, match.awayTeam.name);
+
     return buildPoissonPrediction(
       match,
       h2h,
@@ -277,7 +282,9 @@ export async function getPrediction(matchId: number | string) {
       away,
       market,
       matchTeamXG(xgTeams, match.homeTeam.name),
-      matchTeamXG(xgTeams, match.awayTeam.name)
+      matchTeamXG(xgTeams, match.awayTeam.name),
+      homeElo?.elo ?? null,
+      awayElo?.elo ?? null
     );
   } catch {
     return null;
