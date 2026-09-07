@@ -1,5 +1,7 @@
 import { Suspense } from "react";
+import { after } from "next/server";
 import { getFixtures } from "@/lib/api";
+import { warmupComplements } from "@/lib/warmup";
 import MatchCard from "@/components/MatchCard";
 import LeagueFilter from "@/components/LeagueFilter";
 import DateFilter from "@/components/DateFilter";
@@ -32,6 +34,10 @@ export default async function Home({ searchParams }: HomeProps) {
   } catch {
     error = "Não foi possível carregar os jogos. Tenta novamente mais tarde.";
   }
+
+  after(() => {
+    void warmupComplements();
+  });
 
   return (
     <div>
