@@ -5,7 +5,7 @@ interface PredictionCardProps {
 }
 
 export default function PredictionCard({ data }: PredictionCardProps) {
-  const { predictions, note, standingsContext, market } = data;
+  const { predictions, note, standingsContext, market, analysis } = data;
 
   const bars = [
     { label: "Casa", value: predictions.home, color: "bg-blue-500" },
@@ -140,13 +140,13 @@ export default function PredictionCard({ data }: PredictionCardProps) {
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="bg-slate-50 rounded-xl p-3 text-center border border-slate-100">
-          <p className="text-xs text-slate-500 mb-1">xG Casa</p>
+          <p className="text-xs text-slate-500 mb-1">λ Casa</p>
           <p className="text-lg font-bold text-slate-900">
             {predictions.expectedGoals.home}
           </p>
         </div>
         <div className="bg-slate-50 rounded-xl p-3 text-center border border-slate-100">
-          <p className="text-xs text-slate-500 mb-1">xG Fora</p>
+          <p className="text-xs text-slate-500 mb-1">λ Fora</p>
           <p className="text-lg font-bold text-slate-900">
             {predictions.expectedGoals.away}
           </p>
@@ -179,6 +179,82 @@ export default function PredictionCard({ data }: PredictionCardProps) {
               </span>
             ))}
           </div>
+        </div>
+      )}
+
+      {analysis && (
+        <div className="border-t pt-4 space-y-4">
+          <div>
+            <h3 className="text-sm font-semibold text-slate-800">Análise estatística</h3>
+            <p className="text-[11px] text-slate-500 mt-0.5">
+              Derivado do mesmo λ Poisson. Fontes: {analysis.sources.join(" · ")}. ρ={analysis.rho} · casa ×{analysis.homeAdvantage}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-sm">
+            <div className="rounded-lg bg-slate-50 border border-slate-100 p-2">
+              <p className="text-[11px] text-slate-500">Pts esperados casa</p>
+              <p className="font-bold text-slate-900">{analysis.expectedPoints.home}</p>
+            </div>
+            <div className="rounded-lg bg-slate-50 border border-slate-100 p-2">
+              <p className="text-[11px] text-slate-500">Pts esperados fora</p>
+              <p className="font-bold text-slate-900">{analysis.expectedPoints.away}</p>
+            </div>
+            <div className="rounded-lg bg-slate-50 border border-slate-100 p-2">
+              <p className="text-[11px] text-slate-500">Clean sheet casa</p>
+              <p className="font-bold text-slate-900">{analysis.cleanSheet.home}%</p>
+            </div>
+            <div className="rounded-lg bg-slate-50 border border-slate-100 p-2">
+              <p className="text-[11px] text-slate-500">Clean sheet fora</p>
+              <p className="font-bold text-slate-900">{analysis.cleanSheet.away}%</p>
+            </div>
+            <div className="rounded-lg bg-slate-50 border border-slate-100 p-2">
+              <p className="text-[11px] text-slate-500">Ganhar por 2+ casa</p>
+              <p className="font-bold text-slate-900">{analysis.winByTwo.home}%</p>
+            </div>
+            <div className="rounded-lg bg-slate-50 border border-slate-100 p-2">
+              <p className="text-[11px] text-slate-500">Ganhar por 2+ fora</p>
+              <p className="font-bold text-slate-900">{analysis.winByTwo.away}%</p>
+            </div>
+            <div className="rounded-lg bg-slate-50 border border-slate-100 p-2">
+              <p className="text-[11px] text-slate-500">Under 1.5</p>
+              <p className="font-bold text-slate-900">{analysis.under15}%</p>
+            </div>
+            <div className="rounded-lg bg-slate-50 border border-slate-100 p-2">
+              <p className="text-[11px] text-slate-500">Over 3.5</p>
+              <p className="font-bold text-slate-900">{analysis.over35}%</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 text-xs">
+            <div className="rounded-lg border border-slate-200 p-3">
+              <p className="font-semibold text-slate-800 mb-1">{data.match.homeTeam.name}</p>
+              <p className="text-slate-600">Ataque {analysis.attack.home} · Defesa {analysis.defense.home}</p>
+              <p className="text-slate-600">Forma {analysis.form.homeGf} GF / {analysis.form.homeGa} GA</p>
+              {analysis.elo.home != null && (
+                <p className="text-slate-600">ClubElo {analysis.elo.home}</p>
+              )}
+            </div>
+            <div className="rounded-lg border border-slate-200 p-3">
+              <p className="font-semibold text-slate-800 mb-1">{data.match.awayTeam.name}</p>
+              <p className="text-slate-600">Ataque {analysis.attack.away} · Defesa {analysis.defense.away}</p>
+              <p className="text-slate-600">Forma {analysis.form.awayGf} GF / {analysis.form.awayGa} GA</p>
+              {analysis.elo.away != null && (
+                <p className="text-slate-600">ClubElo {analysis.elo.away}</p>
+              )}
+            </div>
+          </div>
+
+          {analysis.elo.expectedHomeWin != null && (
+            <p className="text-[11px] text-slate-500">
+              Elo casa−fora {analysis.elo.diff} · P(casa | Elo+80) {Math.round(analysis.elo.expectedHomeWin * 100)}% · incerteza 1X2 {analysis.entropyBits} bits
+            </p>
+          )}
+          {analysis.elo.expectedHomeWin == null && (
+            <p className="text-[11px] text-slate-500">
+              Incerteza 1X2 {analysis.entropyBits} bits (0 = certo, ~1.58 = 1X2 equilibrado).
+            </p>
+          )}
         </div>
       )}
 

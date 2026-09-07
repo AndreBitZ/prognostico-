@@ -28,6 +28,35 @@ export interface Match {
   };
 }
 
+export interface MatchAnalysis {
+  lambda: { home: number; away: number; total: number };
+  attack: { home: number; away: number };
+  defense: { home: number; away: number };
+  homeAdvantage: number;
+  rho: number;
+  form: {
+    homeGf: number;
+    homeGa: number;
+    awayGf: number;
+    awayGa: number;
+    homeGames: number;
+    awayGames: number;
+  };
+  elo: {
+    home: number | null;
+    away: number | null;
+    diff: number | null;
+    expectedHomeWin: number | null;
+  };
+  expectedPoints: { home: number; away: number };
+  cleanSheet: { home: number; away: number };
+  winByTwo: { home: number; away: number };
+  under15: number;
+  over35: number;
+  entropyBits: number;
+  sources: string[];
+}
+
 export interface PredictionResult {
   match: Match;
   predictions: {
@@ -51,6 +80,8 @@ export interface PredictionResult {
       bradleyTerry: "home" | "draw" | "away";
     };
   };
+  analysis?: MatchAnalysis;
+  clubElo?: { home: number; away: number; source: string } | null;
   market?: {
     home: number;
     draw: number;
