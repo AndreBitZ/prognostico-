@@ -8,36 +8,17 @@ interface PageProps {
   params: Promise<{ id: string }>;
 }
 
+export const dynamic = "force-dynamic";
+
 export default async function JogoPage({ params }: PageProps) {
   const { id } = await params;
 
-  let match: Match | null = null;
-  let prediction: PredictionResult | null = null;
-  let error: string | null = null;
-
-  try {
-    prediction = (await getPrediction(id)) as PredictionResult | null;
-    match = (prediction?.match as Match | undefined) || (await getFixtureById(id));
-    if (!match) {
-      error =
-        "Jogo não encontrado ou a API de dados está temporariamente indisponível.";
-    }
-  } catch {
-    try {
-      match = await getFixtureById(id);
-    } catch {
-      match = null;
-    }
-    error = match
-      ? null
-      : "Erro ao carregar dados do jogo. A API pode ter atingido o limite de pedidos.";
-  }
-
-  if (error || !match) {
+  const match = await getFixtureById(id);
+  if (!match) {
     return (
       <div className="text-center py-16">
         <p className="text-red-600 font-medium mb-4">
-          {error || "Jogo não encontrado."}
+          Jogo não encontrado ou a API de dados está temporariamente indisponível.
         </p>
         <Link
           href="/"
@@ -47,6 +28,13 @@ export default async function JogoPage({ params }: PageProps) {
         </Link>
       </div>
     );
+  }
+
+  let prediction: PredictionResult | null = null;
+  try {
+    prediction = (await getPrediction(id, match)) as PredictionResult | null;
+  } catch {
+    prediction = null;
   }
 
   const date = new Date(match.utcDate);
@@ -143,7 +131,7 @@ export default async function JogoPage({ params }: PageProps) {
       ) : (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 text-center">
           <p className="text-amber-800 font-medium">
-            Prognóstico não disponível para este jogo.
+            Prognóstico ainda não disponível para este jogo. O cartaz em cima é o da API principal.
           </p>
         </div>
       )}
