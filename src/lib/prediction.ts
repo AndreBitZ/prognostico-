@@ -1,6 +1,7 @@
 import { calibrateTrio, recordPrediction } from "./calibration";
 import { getLeagueParams } from "./league-params";
 import { leagueXGAverages, type TeamXG } from "./xg";
+import { buildMatchAnalysis } from "./analysis";
 
 export type JsonRecord = Record<string, unknown>;
 
@@ -457,6 +458,31 @@ export function buildPoissonPrediction(
 
   const marketPct = Math.round(mktW * 100);
 
+  const analysis = buildMatchAnalysis({
+    lambdaHome,
+    lambdaAway,
+    homeAttack,
+    homeDefense,
+    awayAttack,
+    awayDefense,
+    homeAdvantage: HOME_ADVANTAGE,
+    rho: params.rho,
+    pHome,
+    pDraw,
+    pAway,
+    homeFormGf: homeAdj.gf,
+    homeFormGa: homeAdj.ga,
+    awayFormGf: awayAdj.gf,
+    awayFormGa: awayAdj.ga,
+    homeFormGames: homeAdj.games,
+    awayFormGames: awayAdj.games,
+    homeElo,
+    awayElo,
+    usedClubElo,
+    usedXG,
+    usedMarket: mktW > 0,
+  });
+
   return {
     match,
     predictions: {
@@ -471,6 +497,9 @@ export function buildPoissonPrediction(
       },
       over25: Math.round(pOver25 * 100),
       btts: Math.round(pBtts * 100),
+      homeOrDraw: homePct + drawPct,
+      awayOrDraw: awayPct + drawPct,
+      homeOrAway: homePct + awayPct,
       topScores,
       confidence,
       value: hasValue,
@@ -480,6 +509,7 @@ export function buildPoissonPrediction(
         bradleyTerry: btWinner,
       },
     },
+    analysis,
     clubElo: usedClubElo
       ? {
           home: Math.round((homeElo || 0) * 10) / 10,
