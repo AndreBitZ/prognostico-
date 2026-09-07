@@ -1,5 +1,6 @@
 import { calibrateTrio, recordPrediction } from "./calibration";
 import { getLeagueParams } from "./league-params";
+import { leagueXGAverages, type TeamXG } from "./xg";
 
 export type JsonRecord = Record<string, unknown>;
 
@@ -211,6 +212,24 @@ function leagueHomeAdvantage(standings: StandingsPack, fallback: number) {
   return Math.max(1.12, Math.min(1.38, ratio));
 }
 
+function blendXG(
+  attack: number,
+  defense: number,
+  xg: TeamXG | null,
+  avgFor: number,
+  avgAgainst: number
+) {
+  if (!xg || xg.played < 5) return { attack, defense, used: false };
+  const w = Math.min(0.4, 0.055 * xg.played);
+  const atk = xg.npxgf / Math.max(0.4, avgFor);
+  const def = xg.npxga / Math.max(0.4, avgAgainst);
+  return {
+    attack: attack * (1 - w) + shrinkStrength(atk, xg.played) * w,
+    defense: defense * (1 - w) + shrinkStrength(def, xg.played) * w,
+    used: true,
+  };
+}
+
 export function buildPoissonPrediction(
   match: {
     id: number;
@@ -222,7 +241,9 @@ export function buildPoissonPrediction(
   standings: StandingsPack,
   homeForm: RecentForm,
   awayForm: RecentForm,
-  market?: { home: number; draw: number; away: number; homeOdd: number; drawOdd: number; awayOdd: number; books: number; source: string } | null
+  market?: { home: number; draw: number; away: number; homeOdd: number; drawOdd: number; awayOdd: number; books: number; source: string } | null,
+  homeXG?: TeamXG | null,
+  awayXG?: TeamXG | null
 ) {
   const MAX_GOALS = 6;
   const params = getLeagueParams(match.competition?.code);
@@ -259,10 +280,21 @@ export function buildPoissonPrediction(
     return season * (1 - w) + shrinkStrength(formStrength, formGames) * w;
   };
 
-  const homeAttack = formBlend(homeSeason.attack, homeAdj.gf, homeAdj.games, leagueAvgHome);
-  const homeDefense = formBlend(homeSeason.defense, homeAdj.ga, homeAdj.games, leagueAvgAway);
-  const awayAttack = formBlend(awaySeason.attack, awayAdj.gf, awayAdj.games, leagueAvgAway);
-  const awayDefense = formBlend(awaySeason.defense, awayAdj.ga, awayAdj.games, leagueAvgHome);
+  let homeAttack = formBlend(homeSeason.attack, homeAdj.gf, homeAdj.games, leagueAvgHome);
+  let homeDefense = formBlend(homeSeason.defense, homeAdj.ga, homeAdj.games, leagueAvgAway);
+  let awayAttack = formBlend(awaySeason.attack, awayAdj.gf, awayAdj.games, leagueAvgAway);
+  let awayDefense = formBlend(awaySeason.defense, awayAdj.ga, awayAdj.games, leagueAvgHome);
+
+  const xgAvgs = leagueXGAverages(
+    [homeXG, awayXG].filter((t): t is TeamXG => Boolean(t))
+  );
+  const hx = blendXG(homeAttack, homeDefense, homeXG || null, xgAvgs.for, xgAvgs.against);
+  const ax = blendXG(awayAttack, awayDefense, awayXG || null, xgAvgs.for, xgAvgs.against);
+  homeAttack = hx.attack;
+  homeDefense = hx.defense;
+  awayAttack = ax.attack;
+  awayDefense = ax.defense;
+  const usedXG = hx.used && ax.used;
 
   let lambdaHome = homeAttack * awayDefense * leagueAvgHome * HOME_ADVANTAGE;
   let lambdaAway = awayAttack * homeDefense * leagueAvgAway;
@@ -438,6 +470,21 @@ export function buildPoissonPrediction(
         bradleyTerry: btWinner,
       },
     },
+    xg: usedXG
+      ? {
+          home: {
+            npxgf: Math.round((homeXG?.npxgf || 0) * 100) / 100,
+            npxga: Math.round((homeXG?.npxga || 0) * 100) / 100,
+            played: homeXG?.played || 0,
+          },
+          away: {
+            npxgf: Math.round((awayXG?.npxgf || 0) * 100) / 100,
+            npxga: Math.round((awayXG?.npxga || 0) * 100) / 100,
+            played: awayXG?.played || 0,
+          },
+          source: "Understat",
+        }
+      : null,
     market: market
       ? {
           home: Math.round(market.home * 100),
@@ -473,6 +520,6 @@ export function buildPoissonPrediction(
           }
         : null,
     },
-    note: `Poisson + NB + Dixon-Coles (ρ=${params.rho}) + pi-rating + Bradley-Terry${mktW ? ` + mercado ${marketPct}%` : ""}, calibração. Casa: ${HOME_ADVANTAGE.toFixed(2)}. Votos ${votes + 1}/3${market ? (marketAgrees ? "; mercado concorda" : "; mercado discorda") : ""}${hasValue ? "; valor vs odd" : ""}. Não constitui conselho de apostas.`,
+    note: `Poisson + NB + Dixon-Coles (ρ=${params.rho}) + pi-rating + Bradley-Terry${mktW ? ` + mercado ${marketPct}%` : ""}${usedXG ? " + npxG Understat" : ""}, calibração. Casa: ${HOME_ADVANTAGE.toFixed(2)}. Votos ${votes + 1}/3${market ? (marketAgrees ? "; mercado concorda" : "; mercado discorda") : ""}${hasValue ? "; valor vs odd" : ""}. Não constitui conselho de apostas.`,
   };
 }
