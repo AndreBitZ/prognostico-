@@ -2,9 +2,17 @@ const ODDS_API_KEY =
   process.env.ODDS_API_KEY || "f3308789dff38e8bfffd6339acd94122";
 const ODDS_BASE = "https://api.the-odds-api.com/v4";
 
+/** Chaves The Odds API para as ligas do football-data.org usadas na app. */
 export const ODDS_LEAGUES: Record<string, string> = {
   PL: "soccer_epl",
+  PD: "soccer_spain_la_liga",
+  SA: "soccer_italy_serie_a",
+  BL1: "soccer_germany_bundesliga",
+  FL1: "soccer_france_ligue_one",
+  CL: "soccer_uefa_champs_league",
   PPL: "soccer_portugal_primeira_liga",
+  DED: "soccer_netherlands_eredivisie",
+  BSA: "soccer_brazil_campeonato",
 };
 
 export type MarketOdds = {
@@ -37,7 +45,10 @@ function norm(name: string) {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9 ]/g, " ")
-    .replace(/\b(fc|cf|sc|ac|cd|sad|united|utd|city|sporting|club|de|da|do|the)\b/g, " ")
+    .replace(
+      /\b(fc|cf|sc|ac|cd|sad|ssc|ss|as|ud|rc|us|sv|tsg|bsc|vfl|vfb|united|utd|city|sporting|club|de|da|do|the|calcio)\b/g,
+      " "
+    )
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -64,6 +75,47 @@ const ALIASES: Record<string, string> = {
   "west ham": "west ham",
   "brighton": "brighton",
   "newcastle": "newcastle",
+  "atletico madrid": "atletico madrid",
+  "atletico de madrid": "atletico madrid",
+  "athletic club": "athletic bilbao",
+  "athletic bilbao": "athletic bilbao",
+  "real sociedad": "real sociedad",
+  "inter": "inter milan",
+  "internazionale": "inter milan",
+  "fc internazionale milano": "inter milan",
+  "ac milan": "milan",
+  "as roma": "roma",
+  "ss lazio": "lazio",
+  "juventus": "juventus",
+  "napoli": "napoli",
+  "bayern munich": "bayern munich",
+  "fc bayern munchen": "bayern munich",
+  "fc bayern munich": "bayern munich",
+  "borussia dortmund": "dortmund",
+  "bayer leverkusen": "bayer leverkusen",
+  "rb leipzig": "leipzig",
+  "eintracht frankfurt": "eintracht frankfurt",
+  "paris saint germain": "paris saint germain",
+  "paris saint-germain": "paris saint germain",
+  "psg": "paris saint germain",
+  "olympique marseille": "marseille",
+  "olympique lyonnais": "lyon",
+  "as monaco": "monaco",
+  "lille osc": "lille",
+  "ajax": "ajax",
+  "psv": "psv eindhoven",
+  "psv eindhoven": "psv eindhoven",
+  "feyenoord": "feyenoord",
+  "flamengo": "flamengo",
+  "se palmeiras": "palmeiras",
+  "sao paulo": "sao paulo",
+  "corinthians": "corinthians",
+  "fluminense": "fluminense",
+  "gremio": "gremio",
+  "internacional": "internacional",
+  "botafogo": "botafogo",
+  "cruzeiro": "cruzeiro",
+  "atletico mineiro": "atletico mineiro",
 };
 
 function alias(name: string) {
