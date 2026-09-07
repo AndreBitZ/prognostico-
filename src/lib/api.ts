@@ -15,6 +15,7 @@ const THESPORTSDB_KEY = process.env.THESPORTSDB_KEY || "123";
 
 export const MAIN_LEAGUES = [
   { id: "PL", name: "Premier League", country: "Inglaterra" },
+  { id: "ELC", name: "Championship", country: "Inglaterra" },
   { id: "PD", name: "La Liga", country: "Espanha" },
   { id: "SA", name: "Serie A", country: "Itália" },
   { id: "BL1", name: "Bundesliga", country: "Alemanha" },

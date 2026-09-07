@@ -18,6 +18,7 @@ const DEFAULTS: LeagueParams = {
 
 const BY_CODE: Record<string, Partial<LeagueParams>> = {
   PL: { rho: -0.1, homeAdvantageFallback: 1.28, marketWeight: 0.28 },
+  ELC: { rho: -0.09, homeAdvantageFallback: 1.26, marketWeight: 0.22, nbOverWeight: 0.57 },
   PD: { rho: -0.09, homeAdvantageFallback: 1.3, marketWeight: 0.26 },
   SA: { rho: -0.11, homeAdvantageFallback: 1.26, nbOverWeight: 0.5 },
   BL1: { rho: -0.05, homeAdvantageFallback: 1.22, nbOverWeight: 0.6 },

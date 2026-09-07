@@ -5,16 +5,16 @@ App de prognósticos de futebol em **Next.js 15** (`AndreBitZ/prognostico-`).
 ## Fontes (plano gratuito)
 
 - **Football-Data.org** — jogos, standings casa/fora/total, forma recente, H2H
-- **The Odds API** — 1X2 desvigado (todas as ligas da home), blend de 25% no modelo e selo de valor
+- **The Odds API** — 1X2 desvigado (todas as ligas da home), blend no modelo e selo de valor
 - **TheSportsDB** — emblemas quando o crest falha
 
-Não usamos livescore agressivo nem APIs “all-in-one” no motor. Calibração histórica (CSV football-data.co.uk / openfootball) fica offline, fora do request da UI.
+Não usamos livescore agressivo nem APIs all-in-one no motor. Calibração histórica (CSV football-data.co.uk / openfootball) fica offline, fora do request da UI.
 
 ## Modelo
 
-Poisson + Dixon-Coles + binomial negativa + π-rating + Bradley-Terry + mercado (quando existe) + calibração.
+Poisson + Dixon-Coles + binomial negativa + π-rating + Bradley-Terry + mercado (quando existe) + calibração. Parâmetros ρ / casa / pesos por liga.
 
-Ligas: Premier League, La Liga, Serie A, Bundesliga, Ligue 1, Champions League, Primeira Liga, Eredivisie, Brasileirão.
+Ligas: Premier League, Championship, La Liga, Serie A, Bundesliga, Ligue 1, Champions League, Primeira Liga, Eredivisie, Brasileirão.
 
 ## Ambiente
 
