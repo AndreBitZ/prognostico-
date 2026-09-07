@@ -243,7 +243,9 @@ export function buildPoissonPrediction(
   awayForm: RecentForm,
   market?: { home: number; draw: number; away: number; homeOdd: number; drawOdd: number; awayOdd: number; books: number; source: string } | null,
   homeXG?: TeamXG | null,
-  awayXG?: TeamXG | null
+  awayXG?: TeamXG | null,
+  homeElo?: number | null,
+  awayElo?: number | null
 ) {
   const MAX_GOALS = 6;
   const params = getLeagueParams(match.competition?.code);
@@ -304,6 +306,14 @@ export function buildPoissonPrediction(
   const eloGap = Math.max(-1.2, Math.min(1.2, homePpg - awayPpg));
   lambdaHome *= 1 + eloGap * 0.08;
   lambdaAway *= 1 - eloGap * 0.08;
+
+  let usedClubElo = false;
+  if (homeElo && awayElo && homeElo > 1000 && awayElo > 1000) {
+    const f = Math.max(0.88, Math.min(1.14, Math.pow(10, (homeElo - awayElo) / 2000)));
+    lambdaHome *= f;
+    lambdaAway /= f;
+    usedClubElo = true;
+  }
 
   lambdaHome = Math.min(3.6, Math.max(0.4, lambdaHome));
   lambdaAway = Math.min(3.2, Math.max(0.3, lambdaAway));
@@ -470,6 +480,13 @@ export function buildPoissonPrediction(
         bradleyTerry: btWinner,
       },
     },
+    clubElo: usedClubElo
+      ? {
+          home: Math.round((homeElo || 0) * 10) / 10,
+          away: Math.round((awayElo || 0) * 10) / 10,
+          source: "ClubElo",
+        }
+      : null,
     xg: usedXG
       ? {
           home: {
@@ -520,6 +537,6 @@ export function buildPoissonPrediction(
           }
         : null,
     },
-    note: `Poisson + NB + Dixon-Coles (ρ=${params.rho}) + pi-rating + Bradley-Terry${mktW ? ` + mercado ${marketPct}%` : ""}${usedXG ? " + npxG Understat" : ""}, calibração. Casa: ${HOME_ADVANTAGE.toFixed(2)}. Votos ${votes + 1}/3${market ? (marketAgrees ? "; mercado concorda" : "; mercado discorda") : ""}${hasValue ? "; valor vs odd" : ""}. Não constitui conselho de apostas.`,
+    note: `Poisson + NB + Dixon-Coles (ρ=${params.rho}) + pi-rating + Bradley-Terry${mktW ? ` + mercado ${marketPct}%` : ""}${usedXG ? " + npxG Understat" : ""}${usedClubElo ? " + ClubElo" : ""}, calibração. Casa: ${HOME_ADVANTAGE.toFixed(2)}. Votos ${votes + 1}/3${market ? (marketAgrees ? "; mercado concorda" : "; mercado discorda") : ""}${hasValue ? "; valor vs odd" : ""}. Não constitui conselho de apostas.`,
   };
 }
