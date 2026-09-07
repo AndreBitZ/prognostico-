@@ -60,6 +60,33 @@ function similar(a: string, b: string) {
   return hit >= 1;
 }
 
+function matchKey(m: RecentMatch) {
+  return `${m.utcDate.slice(0, 10)}-${m.isHome ? "h" : "a"}-${m.scored}-${m.conceded}`;
+}
+
+function ratesFromMatches(parsed: RecentMatch[]): RecentForm {
+  let gf = 0;
+  let ga = 0;
+  let points = 0;
+  let wSum = 0;
+  parsed.forEach((m, idx) => {
+    const w = Math.pow(0.85, idx);
+    gf += m.scored * w;
+    ga += m.conceded * w;
+    wSum += w;
+    if (m.scored > m.conceded) points += 3 * w;
+    else if (m.scored === m.conceded) points += 1 * w;
+  });
+  const games = wSum || parsed.length;
+  return {
+    games,
+    gf: games > 0 ? gf / games : 0,
+    ga: games > 0 ? ga / games : 0,
+    points: games > 0 ? points / games : 0,
+    matches: parsed,
+  };
+}
+
 async function loadSeason(file: string, folder: string): Promise<OFMatch[]> {
   const url = `${RAW}/${folder}/${file}`;
   const res = await fetch(url, { next: { revalidate: 21600 } });
@@ -86,46 +113,29 @@ export function formFromOpenFootball(matches: OFMatch[], teamName: string): Rece
     .filter((m) => Array.isArray(m.score?.ft) && m.score!.ft!.length >= 2 && m.date)
     .filter((m) => similar(n, norm(m.team1 || "")) || similar(n, norm(m.team2 || "")))
     .sort((a, b) => String(b.date).localeCompare(String(a.date)))
-    .slice(0, 8);
+    .slice(0, 10);
 
   const parsed: RecentMatch[] = finished.map((m) => {
     const isHome = similar(n, norm(m.team1 || ""));
     const ft = m.score!.ft!;
-    const scored = Number(isHome ? ft[0] : ft[1]);
-    const conceded = Number(isHome ? ft[1] : ft[0]);
     return {
       opponentId: 0,
       isHome,
-      scored,
-      conceded,
+      scored: Number(isHome ? ft[0] : ft[1]),
+      conceded: Number(isHome ? ft[1] : ft[0]),
       utcDate: `${m.date}T12:00:00Z`,
     };
   });
-
-  let gf = 0;
-  let ga = 0;
-  let points = 0;
-  let wSum = 0;
-  parsed.forEach((m, idx) => {
-    const w = Math.pow(0.85, idx);
-    gf += m.scored * w;
-    ga += m.conceded * w;
-    wSum += w;
-    if (m.scored > m.conceded) points += 3 * w;
-    else if (m.scored === m.conceded) points += 1 * w;
-  });
-  const games = wSum || parsed.length;
-  return {
-    games,
-    gf: games > 0 ? gf / games : 0,
-    ga: games > 0 ? ga / games : 0,
-    points: games > 0 ? points / games : 0,
-    matches: parsed,
-  };
+  return ratesFromMatches(parsed);
 }
 
-export function preferForm(primary: RecentForm, fallback: RecentForm): RecentForm {
-  if ((primary.matches?.length || 0) >= 6) return primary;
-  if ((fallback.matches?.length || 0) > (primary.matches?.length || 0)) return fallback;
-  return primary;
+/** Football-Data.org continua a ser a base. O JSON só acrescenta jogos que faltem. */
+export function preferForm(primary: RecentForm, extra: RecentForm): RecentForm {
+  const seen = new Set((primary.matches || []).map(matchKey));
+  const filled = (extra.matches || []).filter((m) => !seen.has(matchKey(m)));
+  if (!filled.length) return primary;
+  const merged = [...(primary.matches || []), ...filled]
+    .sort((a, b) => b.utcDate.localeCompare(a.utcDate))
+    .slice(0, 8);
+  return ratesFromMatches(merged);
 }
