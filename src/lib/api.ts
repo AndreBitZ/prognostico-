@@ -39,6 +39,21 @@ function getDateString(daysFromNow = 0): string {
   return d.toISOString().split("T")[0];
 }
 
+function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return new Promise((resolve) => {
+    const t = setTimeout(() => resolve(fallback), ms);
+    promise
+      .then((v) => {
+        clearTimeout(t);
+        resolve(v);
+      })
+      .catch(() => {
+        clearTimeout(t);
+        resolve(fallback);
+      });
+  });
+}
+
 async function fetchFootballData(
   endpoint: string,
   params: Record<string, string> = {}
@@ -99,16 +114,6 @@ export async function getFixtures(options: { league?: string } = {}) {
 }
 
 export async function getFixtureById(id: number | string) {
-  const numericId = Number(id);
-
-  try {
-    const listed = await getFixtures();
-    const cached = listed.find((m) => m.id === numericId);
-    if (cached) return cached;
-  } catch {
-    // usa o endpoint individual se a lista falhar
-  }
-
   try {
     const data = await fetchFootballData(`/matches/${id}`);
     const raw =
@@ -117,14 +122,6 @@ export async function getFixtureById(id: number | string) {
         : data;
     const match = normalizeMatch(raw as JsonRecord);
     if (!match) return null;
-
-    if (!match.homeTeam.crest) {
-      match.homeTeam.crest = await getTeamLogo(match.homeTeam.name);
-    }
-    if (!match.awayTeam.crest) {
-      match.awayTeam.crest = await getTeamLogo(match.awayTeam.name);
-    }
-
     return match;
   } catch {
     return null;
@@ -232,9 +229,17 @@ const EMPTY_FORM: RecentForm = {
   matches: [],
 };
 
-export async function getPrediction(matchId: number | string) {
+type MatchLike = {
+  id: number;
+  utcDate: string;
+  competition: { code?: string };
+  homeTeam: { id: number; name: string };
+  awayTeam: { id: number; name: string };
+};
+
+export async function getPrediction(matchId: number | string, knownMatch?: MatchLike | null) {
   try {
-    const match = await getFixtureById(matchId);
+    const match = knownMatch || (await getFixtureById(matchId));
     if (!match) return null;
 
     const [h2h, standings, homeForm, awayForm, market, xgTeams, ofMatches, eloTable] =
@@ -251,15 +256,19 @@ export async function getPrediction(matchId: number | string) {
         match.awayTeam.id
           ? getTeamRecentForm(match.awayTeam.id)
           : Promise.resolve(EMPTY_FORM),
-        getMarketOddsForMatch({
-          competitionCode: match.competition.code,
-          homeName: match.homeTeam.name,
-          awayName: match.awayTeam.name,
-          utcDate: match.utcDate,
-        }),
-        getLeagueXG(match.competition.code),
-        getOpenFootballMatches(match.competition.code),
-        getClubEloTable(),
+        withTimeout(
+          getMarketOddsForMatch({
+            competitionCode: match.competition.code,
+            homeName: match.homeTeam.name,
+            awayName: match.awayTeam.name,
+            utcDate: match.utcDate,
+          }),
+          4000,
+          null
+        ),
+        withTimeout(getLeagueXG(match.competition.code), 4000, []),
+        withTimeout(getOpenFootballMatches(match.competition.code), 4000, []),
+        withTimeout(getClubEloTable(), 4000, []),
       ]);
 
     const home = preferForm(
