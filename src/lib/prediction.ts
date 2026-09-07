@@ -1,4 +1,5 @@
 import { calibrateTrio, recordPrediction } from "./calibration";
+import { getLeagueParams } from "./league-params";
 
 export type JsonRecord = Record<string, unknown>;
 
@@ -66,7 +67,7 @@ function dixonColesTau(
   awayGoals: number,
   lambdaHome: number,
   lambdaAway: number,
-  rho = -0.08
+  rho: number
 ): number {
   if (homeGoals === 0 && awayGoals === 0) return 1 - lambdaHome * lambdaAway * rho;
   if (homeGoals === 0 && awayGoals === 1) return 1 + lambdaHome * rho;
@@ -197,13 +198,13 @@ function sameVenueH2H(
   return { games, homeWins, draws, awayWins };
 }
 
-function leagueHomeAdvantage(standings: StandingsPack) {
+function leagueHomeAdvantage(standings: StandingsPack, fallback: number) {
   const homeRows = standings.home || [];
   const awayRows = standings.away || [];
-  if (!homeRows.length || !awayRows.length) return 1.25;
+  if (!homeRows.length || !awayRows.length) return fallback;
   const homePlayed = homeRows.reduce((s, r) => s + r.played, 0);
   const awayPlayed = awayRows.reduce((s, r) => s + r.played, 0);
-  if (homePlayed < 10 || awayPlayed < 10) return 1.25;
+  if (homePlayed < 10 || awayPlayed < 10) return fallback;
   const homeGf = homeRows.reduce((s, r) => s + r.goalsFor, 0) / homePlayed;
   const awayGf = awayRows.reduce((s, r) => s + r.goalsFor, 0) / awayPlayed;
   const ratio = homeGf / Math.max(0.5, awayGf);
@@ -215,6 +216,7 @@ export function buildPoissonPrediction(
     id: number;
     homeTeam: { id: number; name: string };
     awayTeam: { id: number; name: string };
+    competition?: { code?: string };
   },
   h2h: JsonRecord | null,
   standings: StandingsPack,
@@ -223,8 +225,9 @@ export function buildPoissonPrediction(
   market?: { home: number; draw: number; away: number; homeOdd: number; drawOdd: number; awayOdd: number; books: number; source: string } | null
 ) {
   const MAX_GOALS = 6;
+  const params = getLeagueParams(match.competition?.code);
   const total = standings.total || [];
-  const HOME_ADVANTAGE = leagueHomeAdvantage(standings);
+  const HOME_ADVANTAGE = leagueHomeAdvantage(standings, params.homeAdvantageFallback);
 
   let leagueAvgHome = 1.45;
   let leagueAvgAway = 1.15;
@@ -283,7 +286,7 @@ export function buildPoissonPrediction(
   for (let i = 0; i <= MAX_GOALS; i++) {
     for (let j = 0; j <= MAX_GOALS; j++) {
       const base = poissonPmf(i, lambdaHome) * poissonPmf(j, lambdaAway);
-      const p = base * dixonColesTau(i, j, lambdaHome, lambdaAway);
+      const p = base * dixonColesTau(i, j, lambdaHome, lambdaAway, params.rho);
       if (i > j) pHome += p;
       else if (i === j) pDraw += p;
       else pAway += p;
@@ -312,16 +315,18 @@ export function buildPoissonPrediction(
     }
   }
   if (nbMass > 0) {
-    pOver25 = Math.min(0.92, pOver25 * 0.45 + (nbOver / nbMass) * 0.55);
-    pBtts = Math.min(0.92, pBtts * 0.45 + (nbBtts / nbMass) * 0.55);
+    const nbW = params.nbOverWeight;
+    pOver25 = Math.min(0.92, pOver25 * (1 - nbW) + (nbOver / nbMass) * nbW);
+    pBtts = Math.min(0.92, pBtts * (1 - nbW) + (nbBtts / nbMass) * nbW);
   }
 
   const homePi = piRatingFromMatches(homeForm, total, true);
   const awayPi = piRatingFromMatches(awayForm, total, false);
   const pi = piProbabilities(homePi, awayPi);
-  pHome = pHome * 0.72 + pi.home * 0.28;
-  pDraw = pDraw * 0.72 + pi.draw * 0.28;
-  pAway = pAway * 0.72 + pi.away * 0.28;
+  const piW = params.piWeight;
+  pHome = pHome * (1 - piW) + pi.home * piW;
+  pDraw = pDraw * (1 - piW) + pi.draw * piW;
+  pAway = pAway * (1 - piW) + pi.away * piW;
   const tPi = pHome + pDraw + pAway;
   pHome /= tPi;
   pDraw /= tPi;
@@ -342,18 +347,20 @@ export function buildPoissonPrediction(
   const modelOnly = { home: pHome, draw: pDraw, away: pAway };
 
   const bt = bradleyTerryProbs(homePpg, awayPpg);
-  pHome = pHome * 0.85 + bt.home * 0.15;
-  pDraw = pDraw * 0.85 + bt.draw * 0.15;
-  pAway = pAway * 0.85 + bt.away * 0.15;
+  const btW = params.btWeight;
+  pHome = pHome * (1 - btW) + bt.home * btW;
+  pDraw = pDraw * (1 - btW) + bt.draw * btW;
+  pAway = pAway * (1 - btW) + bt.away * btW;
   const tBt = pHome + pDraw + pAway;
   pHome /= tBt;
   pDraw /= tBt;
   pAway /= tBt;
 
-  if (market && market.home + market.draw + market.away > 0) {
-    pHome = pHome * 0.75 + market.home * 0.25;
-    pDraw = pDraw * 0.75 + market.draw * 0.25;
-    pAway = pAway * 0.75 + market.away * 0.25;
+  const mktW = market && market.home + market.draw + market.away > 0 ? params.marketWeight : 0;
+  if (mktW > 0 && market) {
+    pHome = pHome * (1 - mktW) + market.home * mktW;
+    pDraw = pDraw * (1 - mktW) + market.draw * mktW;
+    pAway = pAway * (1 - mktW) + market.away * mktW;
     const tm = pHome + pDraw + pAway;
     pHome /= tm;
     pDraw /= tm;
@@ -395,9 +402,7 @@ export function buildPoissonPrediction(
   const modelsAgree = votes >= 1;
   const threeAgree = winner === piWinner && winner === btWinner;
   const marketAgrees = !marketWinner || marketWinner === winner;
-  const modelMarketEdge = market
-    ? modelOnly[winner] - market[winner]
-    : 0;
+  const modelMarketEdge = market ? modelOnly[winner] - market[winner] : 0;
   const hasValue = Boolean(market && modelMarketEdge >= 0.05);
   const confidence: "Alta" | "Média" | "Baixa" =
     threeAgree && marketAgrees && sample >= 8 && edge >= 52
@@ -407,6 +412,8 @@ export function buildPoissonPrediction(
         : "Baixa";
 
   recordPrediction(match.id, winner, { home: pHome, draw: pDraw, away: pAway });
+
+  const marketPct = Math.round(mktW * 100);
 
   return {
     match,
@@ -466,6 +473,6 @@ export function buildPoissonPrediction(
           }
         : null,
     },
-    note: `Poisson + NB + Dixon-Coles + pi-rating + Bradley-Terry${market ? " + mercado 25%" : ""}, com calibração. Casa: ${HOME_ADVANTAGE.toFixed(2)}. Votos ${votes + 1}/3${market ? (marketAgrees ? "; mercado concorda" : "; mercado discorda") : ""}${hasValue ? "; valor vs odd" : ""}. Não constitui conselho de apostas.`,
+    note: `Poisson + NB + Dixon-Coles (ρ=${params.rho}) + pi-rating + Bradley-Terry${mktW ? ` + mercado ${marketPct}%` : ""}, calibração. Casa: ${HOME_ADVANTAGE.toFixed(2)}. Votos ${votes + 1}/3${market ? (marketAgrees ? "; mercado concorda" : "; mercado discorda") : ""}${hasValue ? "; valor vs odd" : ""}. Não constitui conselho de apostas.`,
   };
 }
