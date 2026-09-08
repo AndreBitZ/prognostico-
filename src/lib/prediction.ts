@@ -2,6 +2,7 @@ import { calibrateTrio, recordPrediction } from "./calibration";
 import { getLeagueParams } from "./league-params";
 import { leagueXGAverages, type TeamXG } from "./xg";
 import { buildMatchAnalysis } from "./analysis";
+import { clubEloFactor } from "./elo-blend";
 
 export type JsonRecord = Record<string, unknown>;
 
@@ -308,12 +309,16 @@ export function buildPoissonPrediction(
   lambdaHome *= 1 + eloGap * 0.08;
   lambdaAway *= 1 - eloGap * 0.08;
 
-  let usedClubElo = false;
-  if (homeElo && awayElo && homeElo > 1000 && awayElo > 1000) {
-    const f = Math.max(0.88, Math.min(1.14, Math.pow(10, (homeElo - awayElo) / 2000)));
-    lambdaHome *= f;
-    lambdaAway /= f;
-    usedClubElo = true;
+  const eloBlend = clubEloFactor(
+    homeElo,
+    awayElo,
+    homeTotal?.played || 0,
+    awayTotal?.played || 0
+  );
+  let usedClubElo = eloBlend.used;
+  if (eloBlend.used) {
+    lambdaHome *= eloBlend.factor;
+    lambdaAway /= eloBlend.factor;
   }
 
   lambdaHome = Math.min(3.6, Math.max(0.4, lambdaHome));
