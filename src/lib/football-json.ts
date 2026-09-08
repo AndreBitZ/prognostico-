@@ -95,13 +95,18 @@ async function loadSeason(file: string, folder: string): Promise<OFMatch[]> {
   return Array.isArray(data?.matches) ? (data.matches as OFMatch[]) : [];
 }
 
+/** Época actual + anterior. A forma usa só os 10 mais recentes (Setembro fica com o fim da época passada). */
 export async function getOpenFootballMatches(code?: string | null): Promise<OFMatch[]> {
   const file = code ? FILES[code.toUpperCase()] : undefined;
   if (!file) return [];
   try {
-    const current = await loadSeason(file, seasonFolder());
-    if (current.length) return current;
-    return await loadSeason(file, prevSeasonFolder());
+    const [current, previous] = await Promise.all([
+      loadSeason(file, seasonFolder()),
+      loadSeason(file, prevSeasonFolder()),
+    ]);
+    if (!current.length) return previous;
+    if (!previous.length) return current;
+    return [...previous, ...current];
   } catch {
     return [];
   }
