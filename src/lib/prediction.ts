@@ -3,6 +3,7 @@ import { getLeagueParams } from "./league-params";
 import { leagueXGAverages, type TeamXG } from "./xg";
 import { buildMatchAnalysis } from "./analysis";
 import { clubEloFactor } from "./elo-blend";
+import { pick1x2 } from "./pick-1x2";
 
 export type JsonRecord = Record<string, unknown>;
 
@@ -46,9 +47,7 @@ function negativeBinomialPmf(k: number, lambda: number, r = 9): number {
 }
 
 function pickWinner(h: number, d: number, a: number): "home" | "draw" | "away" {
-  if (h >= d && h >= a) return "home";
-  if (a >= d && a >= h) return "away";
-  return "draw";
+  return pick1x2(h, d, a);
 }
 
 function bradleyTerryProbs(homePpg: number, awayPpg: number) {
