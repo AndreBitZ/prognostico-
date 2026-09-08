@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { getPrediction, getFixtureById } from "@/lib/api";
 import PredictionCard from "@/components/PredictionCard";
-import { Match, PredictionResult } from "@/types/api";
+import { PredictionResult } from "@/types/api";
 
 interface PageProps {
   params: Promise<{ id: string }>;
