@@ -1,5 +1,6 @@
 import { getOpenFootballMatches } from "./football-json";
 import { getLeagueParams } from "./league-params";
+import { pick1x2 } from "./pick-1x2";
 
 type OFMatch = {
   date?: string;
@@ -64,12 +65,6 @@ function trio(lambdaH: number, lambdaA: number, rho: number) {
   return { home: h / s, draw: d / s, away: a / s };
 }
 
-function pick(h: number, d: number, a: number): "home" | "draw" | "away" {
-  if (h >= d && h >= a) return "home";
-  if (a >= d && a >= h) return "away";
-  return "draw";
-}
-
 export async function runBacktest(leagueCode: string): Promise<BacktestResult> {
   const params = getLeagueParams(leagueCode);
   const matches = (await getOpenFootballMatches(leagueCode)) as OFMatch[];
@@ -117,7 +112,7 @@ export async function runBacktest(leagueCode: string): Promise<BacktestResult> {
       const p = trio(lambdaH, lambdaA, params.rho);
       const actual: "home" | "draw" | "away" =
         hg > ag ? "home" : hg === ag ? "draw" : "away";
-      const predicted = pick(p.home, p.draw, p.away);
+      const predicted = pick1x2(p.home, p.draw, p.away);
       const oH = actual === "home" ? 1 : 0;
       const oD = actual === "draw" ? 1 : 0;
       const oA = actual === "away" ? 1 : 0;
