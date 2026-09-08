@@ -315,7 +315,7 @@ export function buildPoissonPrediction(
     homeTotal?.played || 0,
     awayTotal?.played || 0
   );
-  let usedClubElo = eloBlend.used;
+  const usedClubElo = eloBlend.used;
   if (eloBlend.used) {
     lambdaHome *= eloBlend.factor;
     lambdaAway /= eloBlend.factor;
